@@ -1,0 +1,14 @@
+entity:
+  name: Happy Patterns LLC
+brand:
+  name: Happy Patterns
+github:
+  organization: happy-patterns-org
+  public_repo: https://github.com/happy-patterns-org/happy-patterns-org
+web:
+  domain: happy-patterns.com
+  url: https://happy-patterns.com
+dns:
+  provider: Cloudflare
+workspace:
+  provider: Google Workspace

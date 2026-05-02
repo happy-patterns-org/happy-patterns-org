@@ -1,28 +1,25 @@
-# Happy Patterns
+# Happy Patterns LLC — Workspace
 
-Happy Patterns is a small organization focused on building simple, effective tools for education, research, and small businesses.
+Workstation workspace for Happy Patterns LLC. Not a git repository — each subdirectory is its own repo (or its own purpose).
 
-## Projects
+## Layout
 
-- 📱 Android apps for hardware integration  
-- 🛠️ Lightweight AI tools and automations  
-- 🧾 Document processing and formatting systems  
-- 🎮 Educational games and interactive tools
-- 🧠 Agentic workflow prototypes    
+| Path | Purpose |
+|---|---|
+| `apps/` | Product applications — each subdir is its own git repo |
+| `packages/` | Shared libraries — each subdir is its own git repo |
+| `docs/governance/` | Happy Patterns-authored operating standards and restatements |
+| `records/` | Local-only legal/tax/formation records (never pushed) |
+| `CLAUDE.md` | Entity governance (authoritative for agent sessions here) |
+| `CONTRIBUTING.md` | Organization-level contribution workflow |
+| `.subsidiary.yaml` | Public Happy Patterns metadata only |
+| `.gitignore` | Keeps child repos, records, local tools, and secrets outside this shell repo |
+| `.envrc` | Loads Happy Patterns GitHub PAT from 1Password |
 
-## Approach
+## GitHub
 
-- Build things that work and are easy to maintain  
-- Prioritize clarity and clean documentation  
-- Collaborate with educators, researchers, and small teams  
-
-## Tech Stack
-
-- Python · Kotlin · FastAPI · Svelte · GitHub Actions  
-- Fedora · Android · Markdown · LaTeX
-- Everything
+Organization: [happy-patterns-org](https://github.com/happy-patterns-org)
 
 ## Contact
 
-- 🌐 [happy-patterns.com](https://happy-patterns.com)  
-- 📫 [jeffrey@happy-patterns.com](mailto:jeffrey@happy-patterns.com)  
+jeffrey@happy-patterns.com

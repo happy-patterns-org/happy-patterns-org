@@ -1,0 +1,36 @@
+# Local OS/editor noise
+.DS_Store
+*.swp
+*.swo
+*~
+
+# Local environment and credentials
+.env
+.env.*
+!.env.example
+.envrc
+.direnv/
+*.pem
+*.key
+*.p12
+*.pfx
+*secret*
+*secrets*
+
+# Local agent/tool state
+.claude/
+.cursor/
+.mcp.json
+
+# Child repositories and private lanes
+/apps/*
+/packages/*
+/infrastructure/*
+/records/
+
+# Scratch and generated local artifacts
+/tmp/
+/scratch/
+/.local/
+/.private/
+*.log
