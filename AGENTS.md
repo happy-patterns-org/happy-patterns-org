@@ -130,10 +130,10 @@ Do not infer authorization from silence, from earlier-in-session approvals of di
 
 Projects under Happy Patterns live in two places:
 
-- `apps/` — runnable applications (each has its own AGENTS.md and/or AGENTS.md describing its build commands, stack, and project-specific rules)
+- `apps/` — runnable applications (each has its own CLAUDE.md and/or AGENTS.md describing its build commands, stack, and project-specific rules)
 - `packages/` — shared libraries (each has its own README)
 
-When starting work on a specific project, read that project's own `AGENTS.md` or `AGENTS.md` before running commands. Project-specific rules may tighten this document's defaults (for example, a project may require 2 approvers, or forbid direct commits to any branch).
+When starting work on a specific project, read that project's own `CLAUDE.md` or `AGENTS.md` before running commands. Project-specific rules may tighten this document's defaults (for example, a project may require 2 approvers, or forbid direct commits to any branch).
 
 **Project-level rules may add constraints beyond what this document says; they must not relax them.**
 
