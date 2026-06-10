@@ -1,6 +1,6 @@
 # Happy Patterns LLC — Workspace
 
-Workstation workspace for Happy Patterns LLC. Not a git repository — each subdirectory is its own repo (or its own purpose).
+Workstation workspace for Happy Patterns LLC. The root is a minimal git shell repo (governance, workspace docs, and audit packets only); child repos under `apps/` and `packages/` are their own git repositories, kept out of this shell by `.gitignore`, and `records/` is a local-only lane that is never pushed.
 
 ## Layout
 
@@ -8,6 +8,7 @@ Workstation workspace for Happy Patterns LLC. Not a git repository — each subd
 |---|---|
 | `apps/` | Product applications — each subdir is its own git repo |
 | `packages/` | Shared libraries — each subdir is its own git repo |
+| `audit/` | Date-stamped read-only audit packets (findings only; remediation is decided separately) |
 | `docs/governance/` | Happy Patterns-authored operating standards and restatements |
 | `records/` | Local-only legal/tax/formation records (never pushed) |
 | `CLAUDE.md` | Entity governance (authoritative for agent sessions here) |
