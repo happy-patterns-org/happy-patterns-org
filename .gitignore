@@ -28,6 +28,17 @@
 /infrastructure/*
 /records/
 
+# Audit lane: local by default, published by exception.
+# Dated audit runs are ignored wholesale and re-included one at a time, so a new
+# run stays local unless it is explicitly opted in. audit/2026-05-13/profile-audit/
+# is the one published packet and is re-included below.
+/audit/*
+!/audit/2026-05-13/
+
+# Retained local evidence under this path is not published. Named separately so the
+# rule survives any future edit to the lane rules above.
+audit/2026-09-03/evidence/freeze/
+
 # Scratch and generated local artifacts
 /tmp/
 /scratch/
