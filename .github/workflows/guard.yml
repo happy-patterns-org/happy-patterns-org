@@ -1,0 +1,27 @@
+name: guard
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: No quarantined or credential-class paths are tracked
+        run: sh tools/check-staged-guard.sh --tracked
+      - name: The guard refuses what it should
+        run: |
+          for f in audit/x/evidence/freeze/fixture sub/.ENV; do
+            d=$(mktemp -d "${TMPDIR:-/tmp}/guard-fixture.XXXXXX")
+            (cd "$d" && git init -q . && mkdir -p "$(dirname "$f")" && : >"$f" && git add -f . && rc=0 && { sh "$GITHUB_WORKSPACE/tools/check-staged-guard.sh" --staged || rc=$?; } && [ "$rc" -eq 1 ]) || { echo "guard did not refuse $f"; exit 1; }
+          done
+      - name: Root contracts hold
+        run: sh tools/check-root-contracts.sh

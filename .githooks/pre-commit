@@ -1,0 +1,9 @@
+#!/bin/sh
+# Tracked pre-commit hook: blocks staging of quarantined or credential-class paths
+# and bulk adds. Activate once per clone:  git config core.hooksPath .githooks
+# CI runs the tracked check on pull requests and pushes to main, but only after the
+# push. This repository is public, so a pushed path is already published: this hook
+# is the only step that prevents. git commit --no-verify skips it, and it does not
+# run on a merge made without conflicts.
+root=$(git rev-parse --show-toplevel) || exit 1
+exec sh "$root/tools/check-staged-guard.sh" --staged
