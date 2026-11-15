@@ -9,6 +9,8 @@
 # It reads PATH NAMES only (git index / git ls-files). It never opens a file and
 # never prints file contents. Offending paths are printed by name so they can be
 # unstaged; names under quarantine are reported by pattern class, not listed.
+# Matching is case-insensitive. An error (git missing, not a repository, git
+# failing) is a failure, never a pass.
 #
 # Dependency-free POSIX sh; needs only git.
 #
@@ -16,12 +18,19 @@
 #         sh tools/check-staged-guard.sh --tracked   (CI: every tracked path)
 # Env:    HP_BULK_LIMIT=500  staged-file count that trips the bulk-add check
 #         HP_ALLOW_BULK=1    owner-approved bulk change; skips only the count check
-# Exit:   0 = clean   1 = violation   2 = usage error
+# Exit:   0 = clean   1 = violation   2 = usage error, or the check could not run
 
 set -u
 
 MODE=${1:-}
 LIMIT=${HP_BULK_LIMIT:-500}
+
+case "$LIMIT" in
+'' | *[!0-9]*)
+	echo "FAIL  HP_BULK_LIMIT is not a number" >&2
+	exit 2
+	;;
+esac
 
 case "$MODE" in
 --staged) LIST='git diff --cached --name-only --diff-filter=ACMR -z' ;;
@@ -33,21 +42,34 @@ case "$MODE" in
 esac
 
 tmp=$(mktemp "${TMPDIR:-/tmp}/guard.XXXXXX") || exit 2
-trap 'rm -f "$tmp"' EXIT INT TERM
-# NUL-separated names into a newline list; a name containing a newline is itself a
-# violation worth failing on, so tr is acceptable here.
-$LIST | tr '\0' '\n' >"$tmp" || {
+trap 'rm -f "$tmp" "$tmp.z"' EXIT INT TERM
+
+# Capture git's own exit status: a pipeline would report only the last command's,
+# so a failed git would look like an empty, clean list.
+$LIST >"$tmp.z" || {
 	echo "FAIL  could not list paths with git" >&2
+	exit 2
+}
+# NUL-separated names into a newline list; a name containing a newline is split and
+# each part is checked.
+tr '\0' '\n' <"$tmp.z" >"$tmp" || {
+	echo "FAIL  could not read the path list" >&2
 	exit 2
 }
 
 bad=0
 count=$(grep -c . "$tmp")
 
+if [ "$MODE" = "--tracked" ] && [ "$count" -eq 0 ]; then
+	echo "FAIL  git listed no tracked paths" >&2
+	exit 2
+fi
+
 classify() {
-	# Print a class label for a forbidden path, or nothing.
+	# Print a class label for a forbidden path, or nothing. Input is lower-cased.
 	case "$1" in
-	audit/*/evidence/freeze/*) echo "quarantined audit freeze" ;;
+	evidence/freeze | evidence/freeze/* | */evidence/freeze | */evidence/freeze/*)
+		echo "quarantined audit freeze" ;;
 	*/rr-cache/* | rr-cache/*) echo "git rerere cache" ;;
 	.env.example | .env.sample | .env.template | */.env.example | */.env.sample | */.env.template) ;;
 	.env | .env.* | */.env | */.env.*) echo "environment file" ;;
@@ -62,7 +84,7 @@ classify() {
 
 while IFS= read -r p; do
 	[ -n "$p" ] || continue
-	cls=$(classify "$p")
+	cls=$(classify "$(printf '%s' "$p" | tr 'A-Z' 'a-z')")
 	if [ -n "$cls" ]; then
 		bad=1
 		if [ "$cls" = "quarantined audit freeze" ]; then
