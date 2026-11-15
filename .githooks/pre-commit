@@ -1,0 +1,7 @@
+#!/bin/sh
+# Tracked pre-commit hook: blocks staging of quarantined or credential-class paths
+# and bulk adds. Activate once per clone:  git config core.hooksPath .githooks
+# The CI workflow runs the same check on every pull request, so an unactivated
+# clone is caught there, not here.
+root=$(git rev-parse --show-toplevel) || exit 1
+exec sh "$root/tools/check-staged-guard.sh" --staged

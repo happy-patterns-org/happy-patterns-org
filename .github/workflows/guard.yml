@@ -1,0 +1,19 @@
+name: guard
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: No quarantined or credential-class paths are tracked
+        run: sh tools/check-staged-guard.sh --tracked
+      - name: Root contracts hold
+        run: sh tools/check-root-contracts.sh
