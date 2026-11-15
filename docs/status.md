@@ -4,7 +4,7 @@ Dated, append-only notes on operational state that is not visible in code. Newes
 
 ## 2026-11-15: Mail authentication finding for happy-patterns.com
 
-A message sent from the domain on 2026-11-14 carried Google's default DKIM signature, not one for happy-patterns.com. The zone has no `google._domainkey` record, so DMARC passed on SPF alone (and failed before the SPF fix above).
+A message sent from the domain on 2026-11-14 carried Google's default DKIM signature, not one for happy-patterns.com. The zone has no `google._domainkey` record, so DMARC passed on SPF alone.
 
 Recorded policy: DMARC is `p=none`, with aggregate reports enabled, 100% pct and relaxed alignment (public resolver 1.1.1.1, 2026-11-15). It stays `p=none` for now; tightening is proposed only after DKIM signing for the domain has been in place and aggregate reports are clean.
 
