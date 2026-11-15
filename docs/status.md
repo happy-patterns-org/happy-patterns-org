@@ -6,7 +6,7 @@ Dated, append-only notes on operational state that is not visible in code. Newes
 
 A retired mail relay left stale records in the zone. The apex SPF record included a name that no longer resolved, which receivers evaluate as a permanent error. Mail itself is delivered through Google and was not affected.
 
-Changes made by the owner in the DNS dashboard:
+Changes made by the owner in the DNS dashboard. No agent changed the DNS provider:
 
 1. Apex SPF TXT changed from `v=spf1 include:_spf.google.com include:spf.postal.jefahnierocks.com ~all` to `v=spf1 include:_spf.google.com ~all`.
 2. `psrp` CNAME (pointing at the retired relay) deleted.
@@ -14,7 +14,7 @@ Changes made by the owner in the DNS dashboard:
 
 Left untouched: MX (five Google hosts), DMARC, site verification, GitHub Pages records, and the two Postmark records.
 
-Readback, public resolver 1.1.1.1, 2026-11-14 (2026-11-15 UTC), taken independently by the owner and by the agent session, in agreement:
+Readback, public resolver 1.1.1.1, taken independently by the owner and by the agent session (agent readback at 2026-11-15T00:21:23Z), plus the parent orchestrator's own readback at 2026-11-15T00:20:57Z, all in agreement:
 
 - TXT `happy-patterns.com`: the site-verification record and `v=spf1 include:_spf.google.com ~all`.
 - `psrp.happy-patterns.com`: no answer.
