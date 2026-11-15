@@ -10,6 +10,8 @@ Recorded policy: DMARC is `p=none`, with aggregate reports enabled, 100% pct and
 
 Owner batch for Google DKIM signing and for retiring the Postmark records (if unused) is tracked in issue #7. Repository check: nothing in this repository refers to Postmark.
 
+Update, 2026-11-15: the owner generated a 2048-bit DKIM key (selector `google`), published the `google._domainkey` TXT record, and started authentication in the provider consoles. No agent changed the provider. Agent readback at 2026-11-15T05:45:55Z on public resolvers 1.1.1.1 and 8.8.8.8, identical: `google._domainkey` is a `v=DKIM1; k=rsa` record with a 392-character key; DMARC unchanged at `p=none`. That signing is on rests on the owner's statement: the headers of a test message sent 2026-11-14 20:44 Alaska to an outside mailbox show `dkim=pass` for `header.i=@happy-patterns.com` (selector `google`), `spf=pass` and `dmarc=pass`. The Postmark records stay in place until the owner has checked the Postmark account (issue #7, Batch B). The DMARC tightening proposal waits for a few weeks of clean aggregate reports.
+
 ## 2026-11-14: Mail DNS cleanup for happy-patterns.com
 
 A retired mail relay left stale records in the zone. The apex SPF record included a name that no longer resolved, which receivers evaluate as a permanent error. Mail itself is delivered through Google and was not affected.
