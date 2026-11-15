@@ -2,6 +2,14 @@
 
 Dated, append-only notes on operational state that is not visible in code. Newest first. Public data only: no credentials, account identifiers, or financial details.
 
+## 2026-11-15: Mail authentication finding for happy-patterns.com
+
+A message sent from the domain on 2026-11-14 carried Google's default DKIM signature, not one for happy-patterns.com. The zone has no `google._domainkey` record, so DMARC passed on SPF alone (and failed before the SPF fix above).
+
+Recorded policy: DMARC is `p=none`, with aggregate reports enabled, 100% pct and relaxed alignment (public resolver 1.1.1.1, 2026-11-15). It stays `p=none` for now; tightening is proposed only after DKIM signing for the domain has been in place and aggregate reports are clean.
+
+Owner batch for Google DKIM signing and for retiring the Postmark records (if unused) is tracked in issue #7. Repository check: nothing in this repository refers to Postmark.
+
 ## 2026-11-14: Mail DNS cleanup for happy-patterns.com
 
 A retired mail relay left stale records in the zone. The apex SPF record included a name that no longer resolved, which receivers evaluate as a permanent error. Mail itself is delivered through Google and was not affected.
