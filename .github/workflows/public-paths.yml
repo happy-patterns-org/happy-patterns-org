@@ -1,23 +1,30 @@
 # public-paths — scheduled outside check for docs/public-paths.md (rule 5 of
-# Operating Rules in AGENTS.md; owner decision in issue #15).
+# Operating Rules in AGENTS.md; owner decision 2 in issue #15).
 #
-# Each run probes P1-P3 with tools/probe-public-paths.sh, then reports to a
-# heartbeat service outside GitHub. That service alarms on a failure report and
-# on missing reports, which also covers GitHub being down and GitHub disabling
-# this schedule after 60 days without repository activity.
+# Each run probes P1-P3 with tools/probe-public-paths.sh, then reports to one
+# check in a heartbeat service outside GitHub. That service alarms on a failure
+# report and on missing reports. Missing reports also cover GitHub being down.
 #
 # Routing (rule 2):
 #   exit 0  all hold          -> success report
-#   exit 3  drift only        -> success report + agent issue (needs-agent-action)
-#   exit 1  public path down  -> failure report (reaches the owner) + agent issue
-#   exit 2  probe broken      -> no report (the silence alarm fires if it persists)
-#                                + agent issue
+#   exit 3  drift only        -> success report + agent issue
+#   exit 1  public path down  -> failure report (the service alerts the owner)
+#                                + agent issue + the run is marked failed
+#   exit 2  probe broken      -> no report + agent issue; the silence alarm
+#                                reaches the owner only if this outlasts the grace
 #
-# Secrets, set by the owner. They are credentials and are never printed:
-#   HEARTBEAT_URL       success report address. Until it is set, runs still
-#                       probe and open issues, but nothing reports outside GitHub.
-#   HEARTBEAT_FAIL_URL  optional failure report address. Without it, a failed run
-#                       sends nothing and the silence alarm fires instead.
+# Secrets: both are set once by the owner, both are addresses of the same check,
+# and both are credentials that are never printed:
+#   HEARTBEAT_URL       success report address
+#   HEARTBEAT_FAIL_URL  failure report address
+# If either is missing or a report cannot be delivered, the run logs a warning,
+# the agent issue says no report went out, and the silence alarm is the backstop.
+#
+# Keepalive: GitHub disables scheduled workflows in a public repository after 60
+# days without repository activity. Every scheduled run calls the workflow-enable
+# endpoint, which common keepalive tools rely on to reset that timer. The reset
+# is observed behaviour, not documented. If the schedule stops anyway, nothing
+# inside GitHub can raise an issue, and the silence alarm reaches the owner.
 
 name: public-paths
 
@@ -34,6 +41,7 @@ on:
 permissions:
   contents: read
   issues: write
+  actions: write
 
 concurrency:
   group: public-paths
@@ -61,56 +69,83 @@ jobs:
           echo "probe exit $rc"
 
       - name: Report to the heartbeat service
+        id: report
+        if: always()
         shell: bash
         env:
           HEARTBEAT_URL: ${{ secrets.HEARTBEAT_URL }}
           HEARTBEAT_FAIL_URL: ${{ secrets.HEARTBEAT_FAIL_URL }}
           RC: ${{ steps.probe.outputs.rc }}
         run: |
-          if [ -z "$HEARTBEAT_URL" ]; then
-            echo "::warning::HEARTBEAT_URL is not set; nothing reported outside GitHub"
-            exit 0
-          fi
           case "$RC" in
-            0|3) url=$HEARTBEAT_URL ;;
-            1) url=$HEARTBEAT_FAIL_URL ;;
-            *) url= ;;
+            0|3) url=$HEARTBEAT_URL; name=HEARTBEAT_URL; kind=success ;;
+            1) url=$HEARTBEAT_FAIL_URL; name=HEARTBEAT_FAIL_URL; kind=failure ;;
+            *)
+              echo "sent=none" >> "$GITHUB_OUTPUT"
+              echo "no report for probe exit ${RC:-none}"
+              exit 0
+              ;;
           esac
           if [ -z "$url" ]; then
-            echo "no report for probe exit $RC"
+            echo "::warning::$name is not set; no $kind report sent"
+            echo "sent=none" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          curl -fsS -o /dev/null --max-time 20 --retry 3 --retry-delay 5 "$url"
-          echo "report sent for probe exit $RC"
+          if curl -fsS -o /dev/null --connect-timeout 5 --max-time 15 --retry 2 --retry-delay 5 "$url"; then
+            echo "sent=$kind" >> "$GITHUB_OUTPUT"
+            echo "$kind report sent"
+          else
+            echo "::warning::the $kind report could not be delivered; the silence alarm is the backstop"
+            echo "sent=none" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Open the agent issue
-        if: steps.probe.outputs.rc != '0' && inputs.inject_path == ''
+        if: always() && steps.probe.outputs.rc != '0' && inputs.inject_path == ''
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           RC: ${{ steps.probe.outputs.rc }}
+          SENT: ${{ steps.report.outputs.sent }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          title="public-paths: probe reported a problem"
+          case "$RC" in
+            1) title="public-paths: a public path is down (exit 1)" ;;
+            3) title="public-paths: drift (exit 3)" ;;
+            *) title="public-paths: the probe is broken (exit ${RC:-none})" ;;
+          esac
+          case "$RC/$SENT" in
+            1/failure) alert="A failure report was sent; the heartbeat service alerts the owner." ;;
+            1/*) alert="No failure report went out (see the run's warnings), so this run alerted no one. The silence alarm fires if no success report arrives within the grace period." ;;
+            3/*) alert="Drift only: the paths still serve. The owner is not alerted." ;;
+            *) alert="No report was sent. The silence alarm reaches the owner only if this outlasts the grace period." ;;
+          esac
           open=$(gh issue list -R "$GITHUB_REPOSITORY" --state open --label needs-agent-action \
-            --search "\"$title\" in:title" --json number --jq '.[0].number // empty')
+            --search "public-paths in:title" --limit 50 --json number,title |
+            jq -r --arg t "$title" '[.[] | select(.title == $t)][0].number // empty')
           if [ -n "$open" ]; then
             echo "issue #$open is already open; see $RUN_URL"
             exit 0
           fi
           {
-            echo "Probe exit $RC at $(date -u +%Y-%m-%dT%H:%M:%SZ): $RUN_URL"
+            echo "Probe exit ${RC:-none} at $(date -u +%Y-%m-%dT%H:%M:%SZ): $RUN_URL"
             echo
-            echo "Exit 1: a public path is down (the owner was alerted). Exit 2: the probe is broken. Exit 3: drift."
+            echo "$alert"
             echo
             echo '```'
             grep -E '^(FAIL|ERROR)' probe.log || true
             echo '```'
             echo
-            echo "Close this once a run shows exit 0. Later runs do not comment while it is open."
+            echo "Close this once a run shows exit 0. Later runs with the same exit do not comment while it is open."
           } > body.md
           gh issue create -R "$GITHUB_REPOSITORY" --title "$title" --label needs-agent-action --body-file body.md
 
+      - name: Keep the schedule enabled
+        if: always() && github.event_name == 'schedule'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X PUT "repos/$GITHUB_REPOSITORY/actions/workflows/public-paths.yml/enable"
+
       - name: Mark a down path as a failed run
-        if: steps.probe.outputs.rc == '1'
+        if: always() && steps.probe.outputs.rc == '1'
         run: exit 1

@@ -45,6 +45,38 @@ for t in curl jq openssl; do
 	}
 done
 
+# The injected path is appended to the site's origin, so it must be a plain path:
+# a leading "/" and only URL-safe path characters (no "@", "|", spaces or "?").
+if [ -n "${PROBE_INJECT_PATH:-}" ]; then
+	case $PROBE_INJECT_PATH in
+	/*) ;;
+	*)
+		printf 'ERROR PROBE_INJECT_PATH must start with /\n'
+		exit 2
+		;;
+	esac
+	case $PROBE_INJECT_PATH in
+	*[!A-Za-z0-9._~/-]*)
+		printf 'ERROR PROBE_INJECT_PATH may contain only letters, digits and . _ ~ / -\n'
+		exit 2
+		;;
+	esac
+fi
+
+# Time budget: the job limit is 10 minutes and the report must still go out
+# after a black-holed outage. Each request is capped at 10 s with one retry
+# (about 23 s worst case); ten requests plus the 15 s TLS read stay under 5 min.
+fetch() { curl -sS --connect-timeout 5 --max-time 10 --retry 1 --retry-delay 3 "$@" 2>/dev/null; }
+
+with_timeout() {
+	if command -v timeout >/dev/null 2>&1; then
+		timeout "$@"
+	else
+		shift
+		"$@"
+	fi
+}
+
 down=0
 broken=0
 drift=0
@@ -57,8 +89,7 @@ trap 'rm -rf "$tmp"' EXIT
 # dns NAME TYPE TYPENUM -> answer data of that type, sorted, one per line.
 # Returns non-zero when the resolver is unreachable or the answer is not NOERROR.
 dns() {
-	json=$(curl -sS --max-time 20 --retry 2 --retry-delay 5 --retry-all-errors \
-		"$DNS_API?name=$1&type=$2" 2>/dev/null) || return 1
+	json=$(fetch --retry-all-errors "$DNS_API?name=$1&type=$2") || return 1
 	printf '%s' "$json" | jq -er --argjson t "$3" \
 		'if .Status == 0 then ([.Answer[]? | select(.type == $t) | .data] | sort | join("\n")) else error("rcode") end' \
 		2>/dev/null
@@ -73,8 +104,7 @@ if [ -n "${PROBE_INJECT_PATH:-}" ]; then
 fi
 while IFS='|' read -r path title; do
 	url="https://$DOMAIN$path"
-	code=$(curl -sS -o "$tmp/body" -w '%{http_code}' --max-time 20 --retry 2 --retry-delay 5 \
-		"$url" 2>/dev/null)
+	code=$(fetch -o "$tmp/body" -w '%{http_code}' "$url")
 	[ -n "$code" ] || code=000
 	if [ "$code" != 200 ]; then
 		down=1
@@ -87,7 +117,7 @@ while IFS='|' read -r path title; do
 	fi
 done <"$tmp/pages"
 
-if openssl s_client -connect "$DOMAIN:443" -servername "$DOMAIN" </dev/null 2>/dev/null |
+if with_timeout 15 openssl s_client -connect "$DOMAIN:443" -servername "$DOMAIN" </dev/null 2>/dev/null |
 	openssl x509 -noout -checkend "$CERT_MIN_SECONDS" >/dev/null 2>&1; then
 	ok "P1 certificate valid for at least 14 more days"
 else
@@ -95,8 +125,7 @@ else
 	bad "P1 certificate expires within 14 days or could not be read"
 fi
 
-r=$(curl -sS -o /dev/null -w '%{http_code} %{redirect_url}' --max-time 20 --retry 2 --retry-delay 5 \
-	"http://$DOMAIN/" 2>/dev/null)
+r=$(fetch -o /dev/null -w '%{http_code} %{redirect_url}' "http://$DOMAIN/")
 if [ "$r" = "301 https://$DOMAIN/" ]; then
 	ok "P1 http:// redirects to https://"
 else
