@@ -32,14 +32,9 @@ What each probe asserts:
 - **P2:** MX for `happy-patterns.com` lists the Google hosts. The probe does not test delivery to the published addresses, because that needs a sending path and the right to read a mailbox. That is a credential decision and is left out here.
 - **P3:** the SPF, `google._domainkey` and `_dmarc` records exist and match the values recorded in `docs/status.md`.
 
-Where the probes run. GitHub Actions does not count as outside P1, for two reasons. First, it runs on GitHub, the same platform that serves Pages. Second, GitHub stops scheduled workflows in a public repository after 60 days with no activity, which is exactly the silent failure this list guards against. The options:
+Where the probes run. A scheduled GitHub Actions workflow on its own does not count as outside P1, for two reasons. First, it runs on GitHub, the same platform that serves Pages. Second, GitHub stops scheduled workflows in a public repository after 60 days with no activity, which is exactly the silent failure this list guards against. So the probe reports to a heartbeat service outside GitHub after every run, whether the run succeeded or failed. That service raises an alarm when a run fails and when the reports stop.
 
-- **A.** Use an outside prober the parent runs for its organizations, if one exists, and register this list with it. Happy Patterns would add no new vendor.
-- **B.** Use an external uptime service that has a heartbeat feature. This adds a third-party service, so it needs the owner's approval.
-
-Recommendation: A if the parent offers it; otherwise B, put to the owner as a single decision.
-
-Silence alarm: after each run, the probe sends a heartbeat to a receiver that is separate from the probe. The receiver raises an alarm when the heartbeats stop.
+The parent runs no shared prober (asked 2026-11-23). The recommended heartbeat service sits in the owner's own account. Adding a check there is a provider change, and the check's ping address is a credential, so the choice is the owner's. It is tracked in issue #15, which also gives the alternative.
 
 Who is told, under the owner's standing alert rule (issue #12, Standing rules):
 
