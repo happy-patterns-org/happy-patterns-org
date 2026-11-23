@@ -83,6 +83,10 @@ Propose means: draft the change on a branch, describe the intent in the PR, wait
 - Git history rewrites, force-pushes, branch deletions
 - Touching production deployments, customer data, or shared infrastructure
 - Any action you cannot describe in a PR title in one sentence
+- Spending money or changing a paid plan
+- Changes at a provider that only the owner can make: DNS, registrar, billing, monitors
+- Changes to this contract, the Escalate list, or the merge gates
+- A conflict between two rules that this contract cannot settle
 
 Escalate means: stop, explain what you're about to do and why, and wait for an explicit go from the owner.
 
@@ -109,10 +113,23 @@ For any action requiring escalation:
 
 1. Stop before acting
 2. Summarize the situation: what you intended to do, what you discovered that required escalation, the options you see
-3. Ask the owner directly in the session
+3. Ask the owner directly in the session, or as one issue labelled `needs-owner`. Either way, give the decision, the recommendation, and what happens on yes, and batch related items together.
 4. Wait for an explicit go before proceeding
 
 Do not infer authorization from silence, from earlier-in-session approvals of different actions, or from "it seems like the next step."
+
+---
+
+## Operating Rules
+
+Happy Patterns works under these six rules. Each restates in Happy Patterns' own words a rule from the parent's operating rules handed off on 2026-11-23, and the owner adopted them in issue #15.
+
+1. **One human; agents do the routine work.** A pull request merges once its required checks pass on its exact head commit and an agent that did not write it has recorded a read of that exact head. Until the read is recorded as a comment, the pull request stays a draft with the label `needs-agent-review`, and the merge is pinned to the head that was read. GitHub does not refuse a merge without the read, so this is a declared control, not an enforced one. Changes to agent authority and every Escalate item also need the owner's own decision.
+2. **No calendar duty on the owner.** No design may depend on the owner doing something on a date or a schedule. A control that needs periodic human action is a defect. Replace it with one of three things: an agent renewing under standing authority while scope and caps stay unchanged, a hard cap with no expiry, or a review that an event triggers. An alert goes to the owner only when only the owner can act on it, or when a credential may be exposed, money is spent past a cap, data may be lost, or a public-facing service is down. Everything else goes to an agent first.
+3. **Restricting agent tools.** A recommendation to restrict an agent tool must state what the tool reaches, what already refuses it, and what the restriction costs the owner. A restriction that moves routine work onto the owner does not make anything safer.
+4. **Asks between agent sessions.** An agent that needs something from another agent session files an issue labelled `needs-agent-action` in the receiving repository. Inside Happy Patterns repositories, the agent files the issue itself. An ask for a repository outside Happy Patterns goes to the parent's coordinating session, which files it, because Happy Patterns sessions do not write outside the organization. A session never ends its turn reporting that it is waiting on another agent. It files the ask, records the next step and who takes it, and carries on.
+5. **Outside checks on public paths.** Every business-critical public path has a scheduled check that runs from outside what it checks: a site, a form, a backup, a login or a mail route. The check alarms when the path fails and when the check itself goes silent. Happy Patterns keeps its list in `docs/public-paths.md`.
+6. **How these rules change.** Happy Patterns adopts a parent rule only by restating it here, and only by the owner's decision. Nothing is adopted by default, and no adoption deadline applies.
 
 ---
 
@@ -122,7 +139,7 @@ Do not infer authorization from silence, from earlier-in-session approvals of di
 - **Linear history.** Squash and merge. No merge commits on `main`.
 - **One logical change per commit.** If you are making two unrelated changes, make two commits.
 - **PR descriptions** explain the why, not the what — the diff shows the what.
-- **Reviews** are per-project per each project's CODEOWNERS and review requirements; at a minimum, every merge to `main` requires owner approval for production-bearing repositories.
+- **Reviews** are per-project per each project's CODEOWNERS and review requirements; at a minimum, every merge to `main` meets rule 1 of Operating Rules: required checks pass on the exact head, and an agent that did not write the change has recorded a read of that head. A project may require more.
 
 ---
 
@@ -161,4 +178,4 @@ For anything that falls outside the autonomous tier and lacks an obvious propose
 
 ---
 
-*Last Updated: 2026-04-20*
+*Last Updated: 2026-11-23*

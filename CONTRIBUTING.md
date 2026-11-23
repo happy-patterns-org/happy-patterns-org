@@ -42,7 +42,7 @@ type(scope): subject
 
 Common types are `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `perf`, `ci`, and `build`.
 
-Keep history linear. Use owner-reviewed pull requests for production-bearing repositories. Do not bypass hooks, checks, or review gates without explicit owner approval and a recorded reason.
+Keep history linear. Merges follow rule 1 of Operating Rules in `AGENTS.md`. Do not bypass hooks, checks, or review gates without explicit owner approval and a recorded reason.
 
 ## Review Standard
 
@@ -67,4 +67,4 @@ Legacy MAAT material is not part of the active Happy Patterns workspace. Treat i
 
 ---
 
-Last updated: 2026-05-01
+Last updated: 2026-11-23
