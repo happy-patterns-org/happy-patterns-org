@@ -1,0 +1,116 @@
+# public-paths — scheduled outside check for docs/public-paths.md (rule 5 of
+# Operating Rules in AGENTS.md; owner decision in issue #15).
+#
+# Each run probes P1-P3 with tools/probe-public-paths.sh, then reports to a
+# heartbeat service outside GitHub. That service alarms on a failure report and
+# on missing reports, which also covers GitHub being down and GitHub disabling
+# this schedule after 60 days without repository activity.
+#
+# Routing (rule 2):
+#   exit 0  all hold          -> success report
+#   exit 3  drift only        -> success report + agent issue (needs-agent-action)
+#   exit 1  public path down  -> failure report (reaches the owner) + agent issue
+#   exit 2  probe broken      -> no report (the silence alarm fires if it persists)
+#                                + agent issue
+#
+# Secrets, set by the owner. They are credentials and are never printed:
+#   HEARTBEAT_URL       success report address. Until it is set, runs still
+#                       probe and open issues, but nothing reports outside GitHub.
+#   HEARTBEAT_FAIL_URL  optional failure report address. Without it, a failed run
+#                       sends nothing and the silence alarm fires instead.
+
+name: public-paths
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+    inputs:
+      inject_path:
+        description: "Readback only: one extra page that must fail, e.g. /no-such-page.html"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: public-paths
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Probe public paths
+        id: probe
+        shell: bash
+        env:
+          PROBE_INJECT_PATH: ${{ inputs.inject_path }}
+        run: |
+          set +e
+          sh tools/probe-public-paths.sh | tee probe.log
+          rc=${PIPESTATUS[0]}
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          echo "probe exit $rc"
+
+      - name: Report to the heartbeat service
+        shell: bash
+        env:
+          HEARTBEAT_URL: ${{ secrets.HEARTBEAT_URL }}
+          HEARTBEAT_FAIL_URL: ${{ secrets.HEARTBEAT_FAIL_URL }}
+          RC: ${{ steps.probe.outputs.rc }}
+        run: |
+          if [ -z "$HEARTBEAT_URL" ]; then
+            echo "::warning::HEARTBEAT_URL is not set; nothing reported outside GitHub"
+            exit 0
+          fi
+          case "$RC" in
+            0|3) url=$HEARTBEAT_URL ;;
+            1) url=$HEARTBEAT_FAIL_URL ;;
+            *) url= ;;
+          esac
+          if [ -z "$url" ]; then
+            echo "no report for probe exit $RC"
+            exit 0
+          fi
+          curl -fsS -o /dev/null --max-time 20 --retry 3 --retry-delay 5 "$url"
+          echo "report sent for probe exit $RC"
+
+      - name: Open the agent issue
+        if: steps.probe.outputs.rc != '0' && inputs.inject_path == ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RC: ${{ steps.probe.outputs.rc }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title="public-paths: probe reported a problem"
+          open=$(gh issue list -R "$GITHUB_REPOSITORY" --state open --label needs-agent-action \
+            --search "\"$title\" in:title" --json number --jq '.[0].number // empty')
+          if [ -n "$open" ]; then
+            echo "issue #$open is already open; see $RUN_URL"
+            exit 0
+          fi
+          {
+            echo "Probe exit $RC at $(date -u +%Y-%m-%dT%H:%M:%SZ): $RUN_URL"
+            echo
+            echo "Exit 1: a public path is down (the owner was alerted). Exit 2: the probe is broken. Exit 3: drift."
+            echo
+            echo '```'
+            grep -E '^(FAIL|ERROR)' probe.log || true
+            echo '```'
+            echo
+            echo "Close this once a run shows exit 0. Later runs do not comment while it is open."
+          } > body.md
+          gh issue create -R "$GITHUB_REPOSITORY" --title "$title" --label needs-agent-action --body-file body.md
+
+      - name: Mark a down path as a failed run
+        if: steps.probe.outputs.rc == '1'
+        run: exit 1
