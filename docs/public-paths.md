@@ -36,21 +36,35 @@ What each probe asserts:
 
 Where the probes run. A scheduled GitHub Actions workflow on its own does not count as outside P1, for two reasons. First, it runs on GitHub, the same platform that serves Pages. Second, GitHub stops scheduled workflows in a public repository after 60 days with no activity, which is exactly the silent failure this list guards against. So the probe reports to a heartbeat service outside GitHub after every run, success or failure. That service raises an alarm on a failure report and when the reports stop. The parent runs no shared prober (issue #15). The service sits in the owner's own account, and the owner chose it in issue #15.
 
-Who is told. This follows the owner's alert rule: rule 2 of Operating Rules in `AGENTS.md` once PR #16 is merged, and until then issue #12, Standing rules.
+State on 2026-11-24. These are four separate facts, and one does not imply another:
 
-- **P1 or P2 fails:** a public-facing service is down. The probe sends a failure report, and the heartbeat service alerts the owner. An agent issue records what failed and what the agent tried.
+- **Critical paths:** identified. They are the list above.
+- **Alarm configuration:** partly in place. The probe and its routing run hourly from `.github/workflows/public-paths.yml`. The heartbeat check and its two addresses do not exist yet, so no alarm can reach the owner today.
+- **Delivery proof:** none for Happy Patterns. No alarm from this organization has been shown to reach the owner. A delivery proof made in another organization covers only that organization.
+- **Floor for unclaimed alarms:** none adopted. See "Unclaimed alarms" below.
+
+Who is told, as configured. This follows the owner's alert rule: rule 2 of Operating Rules in `AGENTS.md` once PR #16 is merged, and until then issue #12, Standing rules.
+
+- **P1 or P2 fails:** a public-facing service is down. The probe sends a failure report, and the heartbeat service alerts the owner. An agent issue records what failed and what the agent tried. Nothing suppresses the report:
+  - Every failing run sends one, whether or not an agent issue is already open.
+  - A path that is down outranks a broken check in the same run, so the report still goes out.
 - **Drift (P3, a page title, the certificate window, the redirect):** an agent hears through an issue labelled `needs-agent-action`. The owner is not alerted.
 - **The probe breaks:** an agent hears through an issue. If it stays broken past the service's grace period, the silence alarm reaches the owner.
 - **The check goes silent for any other reason** (GitHub down, or the schedule stopped despite the keepalive): the silence alarm reaches the owner directly. No path yet carries the heartbeat service's alarm into an agent issue. Until one exists, silence reaches the owner first, because nothing inside GitHub can observe that its own runs have stopped.
 
-Unclaimed alarms. No escalation floor is adopted for an agent issue that nobody claims. Both routes below that would reach the owner go through the heartbeat check. Until that check exists and its addresses are set, an unclaimed issue reaches no one beyond itself.
+Unclaimed alarms. No escalation floor is adopted for an agent issue that nobody claims. A claim only acknowledges an issue; it does not resolve it, and the issue stays open until the path is fixed. Both routes below that would reach the owner go through the heartbeat check. Until that check exists and its addresses are set, an unclaimed issue reaches no one beyond itself.
 
 - **An unclaimed drift issue** stays open, and later runs do not add to it. A certificate that keeps shrinking turns into a page failure once it expires. Once the heartbeat check exists and its addresses are set, that failure reaches the owner as a P1 failure. Drift in P3, a page title or the redirect reaches no one beyond the open issue.
 - **An unclaimed probe-broken issue:** once the heartbeat check exists and its addresses are set, the silence alarm reaches the owner after the grace period passes.
 
 Routing the silence alarm to an agent first is issue #18.
 
-Readback, once the addresses are set: an agent shows the alarm firing once on a deliberate failure (a probe of a page that does not exist) and once on a missed report, then fills in the two check columns above.
+Readback, once the addresses are set. It has two parts, and both are needed:
+
+- **Execution:** an agent dispatches a run against a page that does not exist. The run must show exit 1 and "failure report sent". A second test shows that a missed report raises the silence alarm.
+- **Delivery:** the owner says once, in an agent session, that the alert from that run reached him. That is the delivery proof for Happy Patterns, and it is recorded here with the run.
+
+Then the agent fills in the two check columns above.
 
 ---
 
