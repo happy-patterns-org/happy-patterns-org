@@ -43,10 +43,10 @@ Who is told. This follows the owner's alert rule: rule 2 of Operating Rules in `
 - **The probe breaks:** an agent hears through an issue. If it stays broken past the service's grace period, the silence alarm reaches the owner.
 - **The check goes silent for any other reason** (GitHub down, or the schedule stopped despite the keepalive): the silence alarm reaches the owner directly. No path yet carries the heartbeat service's alarm into an agent issue. Until one exists, silence reaches the owner first, because nothing inside GitHub can observe that its own runs have stopped.
 
-Unclaimed alarms. No escalation floor is adopted for an agent issue that nobody claims. Today:
+Unclaimed alarms. No escalation floor is adopted for an agent issue that nobody claims. Both routes below that would reach the owner go through the heartbeat check. Until that check exists and its addresses are set, an unclaimed issue reaches no one beyond itself.
 
-- **An unclaimed drift issue** stays open, and later runs do not add to it. A certificate that keeps shrinking turns into a page failure once it expires, and that reaches the owner as a P1 failure. Drift in P3, a page title or the redirect reaches no one beyond the open issue.
-- **An unclaimed probe-broken issue** reaches the owner through the silence alarm once the grace period passes. That is the only floor in place.
+- **An unclaimed drift issue** stays open, and later runs do not add to it. A certificate that keeps shrinking turns into a page failure once it expires. Once the heartbeat check exists and its addresses are set, that failure reaches the owner as a P1 failure. Drift in P3, a page title or the redirect reaches no one beyond the open issue.
+- **An unclaimed probe-broken issue:** once the heartbeat check exists and its addresses are set, the silence alarm reaches the owner after the grace period passes.
 
 Routing the silence alarm to an agent first is issue #18.
 
